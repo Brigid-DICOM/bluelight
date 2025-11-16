@@ -70,8 +70,15 @@ class LoadFileInBatches {
         }
     }
 
-    static finishOne() {
+    static finishOne(url) {
         if (LoadFileInBatches.NumOfFetchs > 0) LoadFileInBatches.NumOfFetchs--;
+
+        if (url) {
+            const seriesUID = extractSeriesUidFromUrl(url);
+            if (seriesUID && window.SeriesProgressManager) {
+                window.SeriesProgressManager.incrementLoaded(seriesUID);
+            }
+        }
 
         // Only hide the status indicator when all fetches are complete and queue is empty
         if (LoadFileInBatches.NumOfFetchs === 0 && LoadFileInBatches.queue.length === 0) {
@@ -128,7 +135,7 @@ function wadorsLoader(url, onlyload) {
             showDicomStatus("PACS error: " + error.message, true);
         })
         .finally(function () {
-            LoadFileInBatches.finishOne();
+            LoadFileInBatches.finishOne(url);
         });
 }
 
@@ -859,7 +866,7 @@ function loadDICOMFromUrl(url, loadimage = true) {
             showDicomStatus("PACS error: " + error.message, true);
         })
         .finally(function () {
-            LoadFileInBatches.finishOne();
+            LoadFileInBatches.finishOne(url);
         });
 }
 
@@ -970,5 +977,25 @@ function createDicomTagsList2Viewport(viewport) {
                 }
             }
         } catch (ex) { }
+    }
+}
+
+function extractSeriesUidFromUrl(url) {
+    try {
+        const rsMatch = url.match(/\/series\/([^\/]+)\/instances/);
+        if (rsMatch && rsMatch[1]) {
+            return rsMatch[1];
+        }
+
+        const urlObj = new URL(url);
+        const seriesUID = urlObj.searchParams.get("seriesUID");
+        if (seriesUID) {
+            return seriesUID;
+        }
+
+        return null;
+    } catch(error) {
+        console.warn("Failed to extract series UID from URL: ", url, error);
+        return null;
     }
 }

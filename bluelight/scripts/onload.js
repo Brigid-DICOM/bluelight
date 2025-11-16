@@ -1,3 +1,90 @@
+/**
+ * 管理 Series 影像載入進度
+ */
+window.SeriesProgressManager = {
+  // 儲存各 series 的進度:  { seriesUid: { total: 30, loaded: 0, progressDiv: null } }
+  progressData: {},
+
+  /**
+   * 設置該 series 的 instance 數量
+   */
+  setTotal(seriesUid, total) {
+    if (!this.progressData[seriesUid]) {
+      this.progressData[seriesUid] = { total, loaded: 0, progressDiv: null }
+    } else {
+      this.progressData[seriesUid].total = total;
+    }
+  },
+
+  incrementLoaded(seriesUid) {
+    if (!this.progressData[seriesUid]) return;
+
+    this.progressData[seriesUid].loaded++;
+    this.updateUI(seriesUid);
+  },
+
+  /**
+   * 更新進度 UI
+   * @param {string} seriesUid 
+   */
+  updateUI(seriesUid) {
+    try {
+      const seriesDiv = leftLayout.findSeries(seriesUid);
+      if (!seriesDiv) return;
+
+      const { total, loaded } = this.progressData[seriesUid];
+      
+      if (loaded >= total) {
+        let progressDiv = seriesDiv.querySelector(".series-progress-indicator")
+        if (progressDiv) {
+          progressDiv.remove();
+        }
+        return;
+      }
+
+      let progressDiv = seriesDiv.querySelector(".series-progress-indicator")
+      if (!progressDiv) {
+        progressDiv = document.createElement("div");
+        progressDiv.className = "series-progress-indicator";
+        progressDiv.style.cssText = `
+          position: absolute;
+          top: 5px;
+          right: 5px;
+          background: rgba(0, 0, 0, 0.7);
+          color: #fff;
+          padding: 4px 8px;
+          border-radius: 4px;
+          font-size: 12px;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          z-index: 10;
+        `;
+        seriesDiv.appendChild(progressDiv);
+      }
+
+      progressDiv.innerHTML = `
+        <span>${loaded}/${total}</span>
+        <div style="
+          display: inline-block;
+          width: 12px;
+          height: 12px;
+          border: 2px solid #fff;
+          border-radius: 50%;
+          border-top-color: transparent;
+          animation: spin 1s linear infinite;
+        "></div>
+      `;
+    } catch (error) {
+      console.warn("Failed to update progress UI for series: ", seriesUid, error);
+    }
+  }
+}
+window.updateSeriesInstanceCount = function(seriesUid, count) {
+  window.SeriesProgressManager.setTotal(seriesUid, count);
+}
+
+
 //裝DICOM Tags設定檔的物件
 var DicomTags = {};
 //裝伺服器設定檔的物件
@@ -321,6 +408,29 @@ function getWadoUriRS(studyUID, seriesUID, objectUID) {
 
 function getJsonByInstanceRequest(SeriesResponse, InstanceRequest, instance) {
   let DicomResponse = InstanceRequest.response;
+
+  if (DicomResponse && DicomResponse.length > 0) {
+    const firstImage = DicomResponse[0];
+    const seriesUID = firstImage["0020000E"].Value[0];
+    
+    if (seriesUID) {
+      if (!window.dicomSeriesInstanceCount) window.dicomSeriesInstanceCount = {};
+
+      if (!window.dicomSeriesInstanceCount[seriesUID]) {
+        window.dicomSeriesInstanceCount[seriesUID] = {
+          total: DicomResponse.length,
+          loaded: 0
+        };
+      } else {
+        window.dicomSeriesInstanceCount[seriesUID].total += DicomResponse.length;
+      }
+    }
+
+    if (window.updateSeriesInstanceCount) {
+      window.updateSeriesInstanceCount(seriesUID, window.dicomSeriesInstanceCount[seriesUID].total);
+    }
+  }
+
   var min = Number.MAX_VALUE, minI = 0;
 
   //取得最小的Instance Number
