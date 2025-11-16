@@ -60,9 +60,29 @@ function loadLdcmview() {
   }
   initNewCanvas2();
 
-  //載入config檔的設定
+  // #region 載入config檔的設定
+
+  // 獲取 workspaceId 並組成取得後端 config 的 URL 載入 config
+  const currentUrl = new URL(window.location.href);
+  let workspaceId = currentUrl.searchParams.get("workspaceId");
+  if (!workspaceId) {
+    getDefaultWorkspace().then(workspace => {
+      if (workspace) {
+        workspaceId = workspace.id;
+        sessionStorage.setItem("workspaceId", workspaceId);
+        const configUrl = `${window.location.origin}/api/workspaces/${workspaceId}/bl/config`;
+        readConfigJson(configUrl, readAllJson, readJson);
+      }
+    })
+  } else {
+    sessionStorage.setItem("workspaceId", workspaceId);
+    const configUrl = `${window.location.origin}/api/workspaces/${workspaceId}/bl/config`;
+    readConfigJson(configUrl, readAllJson, readJson);
+  }
+
   readDicomTags("../data/dicomTags.json", setLabelPadding);
-  readConfigJson("../data/config.json", readAllJson, readJson);
+
+  // #endregion 載入config檔的設定
 
   //設定icon邊框
   drawBorder(getByid("MouseOperation"));
@@ -506,4 +526,16 @@ function readJson(url) {
       showDicomStatus("Error processing series data: " + error.message, true);
     }
   }
+}
+
+async function getDefaultWorkspace() {
+  const response = await fetch("/api/workspaces/default");
+
+  if (!response.ok) {
+    showDicomStatus("Error: Failed to fetch default workspace", true);
+    return null;
+  }
+
+  const data = await response.json();
+  return data.workspace;
 }
