@@ -97,11 +97,6 @@ var SwitchViewport = function () {
     drawCrossReferenceLines();
 }
 
-window.addEventListener("beforeunload", () => {
-    localStorage.clear();  // 清除 localStorage
-    sessionStorage.clear(); // 清除 sessionStorage
-});
-
 window.addEventListener('load', function () {
     var isWindowTop = false;
     var lastTouchY = 0;
