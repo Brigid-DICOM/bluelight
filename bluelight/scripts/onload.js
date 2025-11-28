@@ -151,23 +151,42 @@ function loadLdcmview() {
 
   // 獲取 workspaceId 並組成取得後端 config 的 URL 載入 config
   const currentUrl = new URL(window.location.href);
-  let workspaceId = currentUrl.searchParams.get("workspaceId");
-  if (!workspaceId) {
-    getDefaultWorkspace().then(workspace => {
-      if (workspace) {
-        workspaceId = workspace.id;
-        sessionStorage.setItem("workspaceId", workspaceId);
-        const configUrl = `${window.location.origin}/api/workspaces/${workspaceId}/bl/config`;
-        readConfigJson(configUrl, readAllJson, readJson);
-      }
-    })
-  } else {
-    sessionStorage.setItem("workspaceId", workspaceId);
-    const configUrl = `${window.location.origin}/api/workspaces/${workspaceId}/bl/config`;
-    readConfigJson(configUrl, readAllJson, readJson);
-  }
+  const shareToken = currentUrl.searchParams.get("shareToken");
 
-  readDicomTags("../data/dicomTags.json", setLabelPadding);
+  if (shareToken) {
+    // 使用 share loader 載入共享影像
+    // share 模式不需要 workspaceId 和 config
+    readDicomTags("../data/dicomTags.json", setLabelPadding);
+
+    if (window.ShareDicomLoader) {
+      window.ShareDicomLoader.init().then(function(success) {
+        if (!success) {
+          console.error("Failed to initialize share loader");
+        }
+      });
+    } else {
+      console.error("ShareDicomLoader not loaded");
+      showDicomStatus("Error: Share loader not available", true);
+    }
+  } else {
+    let workspaceId = currentUrl.searchParams.get("workspaceId");
+    if (!workspaceId) {
+      getDefaultWorkspace().then(workspace => {
+        if (workspace) {
+          workspaceId = workspace.id;
+          sessionStorage.setItem("workspaceId", workspaceId);
+          const configUrl = `${window.location.origin}/api/workspaces/${workspaceId}/bl/config`;
+          readConfigJson(configUrl, readAllJson, readJson);
+        }
+      })
+    } else {
+      sessionStorage.setItem("workspaceId", workspaceId);
+      const configUrl = `${window.location.origin}/api/workspaces/${workspaceId}/bl/config`;
+      readConfigJson(configUrl, readAllJson, readJson);
+    }
+  
+    readDicomTags("../data/dicomTags.json", setLabelPadding);
+  }
 
   // #endregion 載入config檔的設定
 
