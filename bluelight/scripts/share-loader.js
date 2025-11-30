@@ -58,11 +58,6 @@ window.ShareDicomLoader = {
         showDicomStatus("Loading shared images...");
 
         if (this.specifiedSopUid && (targetType === "study" || targetType === "series")) {
-            await this.loadSpecifiedInstances(targets, targetType);
-            return;
-        }
-        
-        if (this.specifiedSeriesUid && targetType === "instance") {
             await this.loadSpecifiedSeries(targets);
             return;
         }
